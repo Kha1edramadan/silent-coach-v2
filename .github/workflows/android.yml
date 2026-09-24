@@ -14,7 +14,7 @@ jobs:
       contents: read
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Setup Java 17
         uses: actions/setup-java@v5
@@ -29,7 +29,7 @@ jobs:
         run: sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.0.0"
 
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@v5
         with:
           gradle-version: "9.6.1"
 
@@ -58,33 +58,41 @@ jobs:
           test -s app/build/outputs/apk/release/app-release-unsigned.apk
           test -s app/build/outputs/bundle/release/app-release.aab
 
-      - name: Launch APK on Android emulator
-        timeout-minutes: 8
+      - name: Enable KVM
         run: |
-          sdkmanager "emulator" "system-images;android-35;google_apis;x86_64"
-          echo "no" | avdmanager create avd -n silent-coach-test -k "system-images;android-35;google_apis;x86_64" --force
-          nohup emulator -avd silent-coach-test -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect >/tmp/emulator.log 2>&1 &
-          adb wait-for-device
-          for i in $(seq 1 90); do
-            booted=$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')
-            [ "$booted" = "1" ] && break
-            sleep 2
-          done
-          test "$(adb shell getprop sys.boot_completed | tr -d '\r')" = "1"
-          adb shell settings put global window_animation_scale 0
-          adb shell settings put global transition_animation_scale 0
-          adb shell settings put global animator_duration_scale 0
-          adb install -r app/build/outputs/apk/debug/app-debug.apk
-          adb logcat -c
-          adb shell am force-stop com.silentcoach.v2
-          adb shell am start -n com.silentcoach.v2/.MainActivity
-          sleep 8
-          adb shell pidof com.silentcoach.v2
-          adb logcat -d -t 250 | tee /tmp/silent-coach-logcat.txt
-          if grep -E "FATAL EXCEPTION|Process: com\.silentcoach\.v2" /tmp/silent-coach-logcat.txt; then
-            echo "Silent Coach crashed on startup."
-            exit 1
-          fi
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Runtime smoke test
+        uses: ReactiveCircus/android-emulator-runner@v2
+        timeout-minutes: 12
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_7
+          cores: 2
+          ram-size: 2048M
+          heap-size: 512M
+          disk-size: 4096M
+          force-avd-creation: true
+          emulator-boot-timeout: 300
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          disable-animations: true
+          script: |
+            adb devices
+            adb install -r app/build/outputs/apk/debug/app-debug.apk
+            adb logcat -c
+            adb shell am force-stop com.silentcoach.v2
+            adb shell am start -n com.silentcoach.v2/.MainActivity
+            sleep 10
+            adb shell pidof com.silentcoach.v2
+            adb logcat -d -t 400 | tee /tmp/silent-coach-logcat.txt
+            if grep -E "FATAL EXCEPTION|Process: com\.silentcoach\.v2" /tmp/silent-coach-logcat.txt; then
+              echo "Silent Coach crashed during startup."
+              exit 1
+            fi
 
       - name: Upload Android release artifacts
         uses: actions/upload-artifact@v4
