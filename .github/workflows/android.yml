@@ -47,9 +47,38 @@ jobs:
       - name: Build debug APK
         run: gradle --no-daemon :app:assembleDebug
 
+      - name: Create CI release signing key
+        run: |
+          KEYSTORE="$RUNNER_TEMP/silent-coach-ci-release.jks"
+          PASS="silent-coach-ci-only"
+          keytool -genkeypair -v \
+            -keystore "$KEYSTORE" \
+            -storepass "$PASS" \
+            -keypass "$PASS" \
+            -alias silentcoach \
+            -keyalg RSA \
+            -keysize 3072 \
+            -validity 10000 \
+            -dname "CN=Silent Coach CI, OU=Build, O=Silent Coach, L=Cairo, ST=Cairo, C=EG" \
+            >/dev/null 2>&1
+          echo "CI_KEYSTORE=$KEYSTORE" >> "$GITHUB_ENV"
+          echo "CI_KEYSTORE_PASS=$PASS" >> "$GITHUB_ENV"
       - name: Build release APK
         run: gradle --no-daemon :app:assembleRelease
 
+      - name: Sign release APK
+        run: |
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" sign \
+            --ks "$CI_KEYSTORE" \
+            --ks-key-alias silentcoach \
+            --ks-pass "pass:$CI_KEYSTORE_PASS" \
+            --key-pass "pass:$CI_KEYSTORE_PASS" \
+            --v1-signing-enabled true \
+            --v2-signing-enabled true \
+            --v3-signing-enabled true \
+            --v4-signing-enabled false \
+            --out app/build/outputs/apk/release/app-release.apk \
+            app/build/outputs/apk/release/app-release-unsigned.apk
       - name: Build release AAB
         run: gradle --no-daemon :app:bundleRelease
 
