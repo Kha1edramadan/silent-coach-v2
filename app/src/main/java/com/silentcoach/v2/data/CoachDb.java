@@ -128,8 +128,8 @@ public class CoachDb extends SQLiteOpenHelper {
         };
         for(Object[] f:foods){
             Long verifiedAt = "verified".equals(String.valueOf(f[6])) ? now : null;
-            long fid=insert(db,"food",cv("name",f[0],"arabic_name",f[1],"category",f[2],"state",f[3],"brand",f[4],"barcode",f[5],"verification",f[6],"source_id",f[15],"last_verified",verifiedAt,"revision",1,"serving_g",100.0,"notes",f[16]));
-            insert(db,"food_nutrient",cv("food_id",fid,"revision",1,"basis","per_100g","kcal",f[7],"protein",f[8],"carbs",f[9],"fat",f[10],"fiber",f[11],"sugar",f[12],"sodium_mg",f[13],"current",1,"source_id",f[15]));
+            long fid=insert(db,"food",cv("name",f[0],"arabic_name",f[1],"category",f[2],"state",f[3],"brand",f[4],"barcode",f[5],"verification",f[6],"source_id",f[14],"last_verified",verifiedAt,"revision",1,"serving_g",100.0,"notes",f[15]));
+            insert(db,"food_nutrient",cv("food_id",fid,"revision",1,"basis","per_100g","kcal",f[7],"protein",f[8],"carbs",f[9],"fat",f[10],"fiber",f[11],"sugar",f[12],"sodium_mg",f[13],"current",1,"source_id",f[14]));
         }
         insert(db,"settings",cv("key","lang","value","en"));
         insert(db,"settings",cv("key","onboarding_complete","value","0"));
