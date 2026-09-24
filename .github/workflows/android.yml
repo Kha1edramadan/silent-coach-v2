@@ -58,6 +58,34 @@ jobs:
           test -s app/build/outputs/apk/release/app-release-unsigned.apk
           test -s app/build/outputs/bundle/release/app-release.aab
 
+      - name: Launch APK on Android emulator
+        timeout-minutes: 8
+        run: |
+          sdkmanager "emulator" "system-images;android-35;google_apis;x86_64"
+          echo "no" | avdmanager create avd -n silent-coach-test -k "system-images;android-35;google_apis;x86_64" --force
+          nohup emulator -avd silent-coach-test -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect >/tmp/emulator.log 2>&1 &
+          adb wait-for-device
+          for i in $(seq 1 90); do
+            booted=$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')
+            [ "$booted" = "1" ] && break
+            sleep 2
+          done
+          test "$(adb shell getprop sys.boot_completed | tr -d '\r')" = "1"
+          adb shell settings put global window_animation_scale 0
+          adb shell settings put global transition_animation_scale 0
+          adb shell settings put global animator_duration_scale 0
+          adb install -r app/build/outputs/apk/debug/app-debug.apk
+          adb logcat -c
+          adb shell am force-stop com.silentcoach.v2
+          adb shell am start -n com.silentcoach.v2/.MainActivity
+          sleep 8
+          adb shell pidof com.silentcoach.v2
+          adb logcat -d -t 250 | tee /tmp/silent-coach-logcat.txt
+          if grep -E "FATAL EXCEPTION|Process: com\.silentcoach\.v2" /tmp/silent-coach-logcat.txt; then
+            echo "Silent Coach crashed on startup."
+            exit 1
+          fi
+
       - name: Upload Android release artifacts
         uses: actions/upload-artifact@v4
         with:
