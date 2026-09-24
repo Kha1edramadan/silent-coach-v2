@@ -25,8 +25,6 @@ import android.widget.Toast;
 
 import com.google.zxing.integration.android.IntentIntegrator;
 import com.google.zxing.integration.android.IntentResult;
-import com.journeyapps.barcodescanner.integration.IntentResult;
-
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import android.database.Cursor;
@@ -250,7 +248,8 @@ public class MainActivity extends Activity {
         ExecutorService ex=Executors.newSingleThreadExecutor();
         ex.execute(()->{
             try{
-                OpenFoodFactsClient.Product p=new OpenFoodFactsClient().get(code);
+                com.silentcoach.v2.data.OpenFoodFactsClient.Product p =
+        new com.silentcoach.v2.data.OpenFoodFactsClient().get(code);
                 runOnUiThread(()->{
                     results.removeAllViews();
                     if(!p.found||p.name==null||p.name.trim().isEmpty()){
