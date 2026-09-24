@@ -7,12 +7,29 @@ android {
         applicationId 'com.silentcoach.v2'
         minSdk 26
         targetSdk 36
-        versionCode 4
-        versionName '2.2.0'
+        versionCode 5
+        versionName '2.3.0'
     }
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
+    }
+
+    def releaseKeystore = System.getenv("RELEASE_KEYSTORE")
+    if (releaseKeystore != null && new File(releaseKeystore).exists()) {
+        signingConfigs {
+            release {
+                storeFile file(releaseKeystore)
+                storePassword System.getenv("RELEASE_STORE_PASSWORD")
+                keyAlias System.getenv("RELEASE_KEY_ALIAS")
+                keyPassword System.getenv("RELEASE_KEY_PASSWORD")
+            }
+        }
+        buildTypes {
+            release {
+                signingConfig signingConfigs.release
+            }
+        }
     }
 }
 
