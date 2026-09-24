@@ -12,6 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -58,13 +59,7 @@ jobs:
           test -s app/build/outputs/apk/release/app-release-unsigned.apk
           test -s app/build/outputs/bundle/release/app-release.aab
 
-      - name: Enable KVM
-        run: |
-          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
-          sudo udevadm control --reload-rules
-          sudo udevadm trigger --name-match=kvm
-
-      - name: Upload Android release artifacts
+      - name: Upload release build artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -74,6 +69,12 @@ jobs:
             app/build/outputs/apk/release/app-release-unsigned.apk
             app/build/outputs/bundle/release/app-release.aab
           retention-days: 30
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
 
       - name: Runtime smoke test
         uses: ReactiveCircus/android-emulator-runner@v2
@@ -92,7 +93,7 @@ jobs:
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: true
           script: |
-            set +e
+            set -e
             adb devices
             adb install -r app/build/outputs/apk/debug/app-debug.apk
             adb logcat -c
@@ -100,22 +101,19 @@ jobs:
             adb shell am start -W -n com.silentcoach.v2/.MainActivity | tee /tmp/start-result.txt
             sleep 8
             echo "=== APP PROCESS ==="
-            adb shell pidof com.silentcoach.v2 || true
+            adb shell pidof com.silentcoach.v2 | tee /tmp/app-pid.txt
             echo "=== TOP ACTIVITY ==="
-            adb shell dumpsys activity activities | grep -m 3 -E "mResumedActivity|ResumedActivity|com.silentcoach.v2" || true
+            adb shell dumpsys activity activities | tee /tmp/activity-state.txt
             echo "=== EXIT INFO ==="
-            adb shell dumpsys activity exit-info com.silentcoach.v2 || true
+            adb shell dumpsys activity exit-info com.silentcoach.v2 | tee /tmp/exit-info.txt
             echo "=== CRASH BUFFER ==="
-            adb logcat -d -b crash -t 200 | tee /tmp/silent-coach-crash.txt
+            adb logcat -d -b crash -t 250 | tee /tmp/silent-coach-crash.txt
             echo "=== APP LOGCAT ==="
-            adb logcat -d -t 1000 | grep -E "com.silentcoach.v2|AndroidRuntime" | tee /tmp/silent-coach-logcat.txt || true
-            pid=$(adb shell pidof com.silentcoach.v2 2>/dev/null | tr -d '\r' | xargs || true)
+            adb logcat -d -t 1200 | grep -E "com.silentcoach.v2|AndroidRuntime" | tee /tmp/silent-coach-logcat.txt || true
+            grep -E "mResumedActivity.*com.silentcoach.v2|ResumedActivity.*com.silentcoach.v2" /tmp/activity-state.txt
+            test -s /tmp/app-pid.txt
             if grep -E "FATAL EXCEPTION|Process: com\.silentcoach\.v2" /tmp/silent-coach-crash.txt /tmp/silent-coach-logcat.txt; then
               echo "Silent Coach crashed during startup."
-              exit 1
-            fi
-            if [ -z "$pid" ]; then
-              echo "Silent Coach process is not alive after startup."
               exit 1
             fi
 
@@ -126,14 +124,8 @@ jobs:
           name: silent-coach-v2-runtime-diagnostics
           path: |
             /tmp/start-result.txt
+            /tmp/app-pid.txt
+            /tmp/activity-state.txt
+            /tmp/exit-info.txt
             /tmp/silent-coach-crash.txt
             /tmp/silent-coach-logcat.txt
-
-        uses: actions/upload-artifact@v4
-        with:
-          name: silent-coach-v2-release
-          path: |
-            app/build/outputs/apk/debug/app-debug.apk
-            app/build/outputs/apk/release/app-release-unsigned.apk
-            app/build/outputs/bundle/release/app-release.aab
-          retention-days: 30
