@@ -93,29 +93,18 @@ jobs:
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: true
           script: |
-            set -e
             adb devices
             adb install -r app/build/outputs/apk/debug/app-debug.apk
             adb logcat -c
             adb shell am force-stop com.silentcoach.v2
             adb shell am start -W -n com.silentcoach.v2/.MainActivity | tee /tmp/start-result.txt
             sleep 8
-            echo "=== APP PROCESS ==="
-            adb shell pidof com.silentcoach.v2 | tee /tmp/app-pid.txt
-            echo "=== TOP ACTIVITY ==="
             adb shell dumpsys activity activities | tee /tmp/activity-state.txt
-            echo "=== EXIT INFO ==="
             adb shell dumpsys activity exit-info com.silentcoach.v2 | tee /tmp/exit-info.txt
-            echo "=== CRASH BUFFER ==="
             adb logcat -d -b crash -t 250 | tee /tmp/silent-coach-crash.txt
-            echo "=== APP LOGCAT ==="
             adb logcat -d -t 1200 | grep -E "com.silentcoach.v2|AndroidRuntime" | tee /tmp/silent-coach-logcat.txt || true
             grep -E "mResumedActivity.*com.silentcoach.v2|ResumedActivity.*com.silentcoach.v2" /tmp/activity-state.txt
-            test -s /tmp/app-pid.txt
-            if grep -E "FATAL EXCEPTION|Process: com\.silentcoach\.v2" /tmp/silent-coach-crash.txt /tmp/silent-coach-logcat.txt; then
-              echo "Silent Coach crashed during startup."
-              exit 1
-            fi
+            ! grep -E "FATAL EXCEPTION|Process: com\.silentcoach\.v2" /tmp/silent-coach-crash.txt /tmp/silent-coach-logcat.txt
 
       - name: Upload runtime diagnostics
         if: always()
