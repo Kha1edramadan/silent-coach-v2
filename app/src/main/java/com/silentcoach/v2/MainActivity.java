@@ -23,8 +23,8 @@ import android.widget.Space;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.silentcoach.v2.data.OpenFoodFactsClient;
-import com.journeyapps.barcodescanner.integration.IntentIntegrator;
+import com.google.zxing.integration.android.IntentIntegrator;
+import com.google.zxing.integration.android.IntentResult;
 import com.journeyapps.barcodescanner.integration.IntentResult;
 
 import java.util.concurrent.ExecutorService;
