@@ -1,0 +1,41 @@
+name: Android release checks
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - name: Install Android SDK
+        run: sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.0.0"
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.6'
+      - name: Core self-test
+        run: |
+          mkdir -p /tmp/coretest
+          javac -d /tmp/coretest app/src/main/java/com/silentcoach/v2/core/*.java
+          java -cp /tmp/coretest com.silentcoach.v2.core.CoreSelfTest
+      - name: Build debug APK
+        run: gradle --no-daemon :app:assembleDebug
+      - name: Build release bundle
+        run: gradle --no-daemon :app:bundleRelease
+      - name: Upload Android artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: silent-coach-v2-android-build
+          path: |
+            app/build/outputs/apk/debug/app-debug.apk
+            app/build/outputs/bundle/release/app-release.aab

@@ -1,0 +1,10 @@
+<resources>
+    <color name="sc_bg">#0B0D10</color>
+    <color name="sc_surface">#14171C</color>
+    <color name="sc_surface_2">#1B1F26</color>
+    <color name="sc_text">#F5F7FA</color>
+    <color name="sc_muted">#9AA3AF</color>
+    <color name="sc_accent">#B6F36B</color>
+    <color name="sc_danger">#FF6B6B</color>
+    <color name="sc_blue">#7CB7FF</color>
+</resources>
