@@ -26,3 +26,6 @@ The chat execution environment used to develop this project does not contain the
 
 ## Release gate
 See `PRODUCT_FINAL_QA.md` before treating the build as public 1.0 software.
+
+
+UI build pipeline updated for installable APK with bundled Cairo Arabic font.
